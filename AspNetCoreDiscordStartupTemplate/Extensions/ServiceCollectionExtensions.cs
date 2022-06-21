@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
 
         var discordClient = new DiscordShardedClient(config);
 
-        serviceCollection.Configure<DiscordBotOptions>(configuration);
+        serviceCollection.Configure<DiscordBotOptions>(configuration.GetSection("DiscordBot"));
 
         serviceCollection.AddHostedService<DiscordStartupService>();
         
