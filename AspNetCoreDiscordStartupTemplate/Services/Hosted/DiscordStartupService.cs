@@ -34,6 +34,8 @@ public class DiscordStartupService : BackgroundService
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _discordShardedClient.InteractionCreated += OnDiscordInteractionCreated;
+        _discordShardedClient.MessageReceived += OnDiscordMessageReceived;
         PrepareClientAwaiter();
         await _discordShardedClient.LoginAsync(TokenType.Bot, _discordBotOptions.Value.Token);
         await _discordShardedClient.StartAsync();
@@ -47,6 +49,28 @@ public class DiscordStartupService : BackgroundService
         // register your commands here
         //await _interactionService.RegisterCommandsToGuildAsync();
         
+        
+    }
+    
+    private async Task OnDiscordInteractionCreated(SocketInteraction socketInteraction)
+    {
+        var shardedInteractionContext = new ShardedInteractionContext(_discordShardedClient, socketInteraction);
+        await _interactionService.ExecuteCommandAsync(shardedInteractionContext, _serviceProvider);
+    }
+    
+    private async Task OnDiscordMessageReceived(SocketMessage socketMessage)
+    {
+        if (socketMessage is not SocketUserMessage socketUserMessage)
+            return;
+
+        var argPos = 0;
+        if (socketUserMessage.HasCharPrefix('!', ref argPos))
+            return;
+        if (socketUserMessage.Author.IsBot)
+            return;
+
+        var context = new ShardedCommandContext(_discordShardedClient, socketUserMessage);
+        await _commandService.ExecuteAsync(context, argPos, _serviceProvider);
     }
 
     private void PrepareClientAwaiter()
