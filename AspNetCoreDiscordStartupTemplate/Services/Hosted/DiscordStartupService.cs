@@ -1,5 +1,8 @@
-﻿using AspNetCoreDiscordStartupTemplate.Options;
+﻿using System.Reflection;
+using AspNetCoreDiscordStartupTemplate.Options;
 using Discord;
+using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Options;
 
@@ -9,15 +12,24 @@ public class DiscordStartupService : BackgroundService
 {
     private readonly DiscordShardedClient _discordShardedClient;
     private readonly IOptions<DiscordBotOptions> _discordBotOptions;
+    private readonly InteractionService _interactionService;
+    private readonly CommandService _commandService;
+    private readonly IServiceProvider _serviceProvider;
     private TaskCompletionSource<bool> _taskCompletionSource;
     private int _shardsReady;
 
     public DiscordStartupService(
         DiscordShardedClient discordShardedClient,
-        IOptions<DiscordBotOptions> discordBotOptions)
+        IOptions<DiscordBotOptions> discordBotOptions,
+        InteractionService interactionService,
+        CommandService commandService,
+        IServiceProvider serviceProvider)
     {
         _discordShardedClient = discordShardedClient;
         _discordBotOptions = discordBotOptions;
+        _interactionService = interactionService;
+        _commandService = commandService;
+        _serviceProvider = serviceProvider;
     }
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -26,6 +38,15 @@ public class DiscordStartupService : BackgroundService
         await _discordShardedClient.LoginAsync(TokenType.Bot, _discordBotOptions.Value.Token);
         await _discordShardedClient.StartAsync();
         await WaitForReadyAsync(stoppingToken);
+
+        // load text commands
+        await _commandService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
+        // load interactions
+        await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
+        
+        // register your commands here
+        //await _interactionService.RegisterCommandsToGuildAsync();
+        
     }
 
     private void PrepareClientAwaiter()

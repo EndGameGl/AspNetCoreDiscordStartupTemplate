@@ -3,9 +3,18 @@
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddDiscord(client =>
+    .AddDiscord(
+        discordClient =>
         {
             // configure your client here
+        },
+        interactionService =>
+        {
+            // configure your interaction service here
+        },
+        textCommandsService =>
+        {
+            // configure your text commands service here
         },
         builder.Configuration);
 
