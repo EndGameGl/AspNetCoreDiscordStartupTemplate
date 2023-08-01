@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Threading.Tasks;
 using AspNetCoreDiscordStartupTemplate.Options;
 using Discord;
 using Discord.Commands;
@@ -41,6 +42,9 @@ public class DiscordStartupService : BackgroundService
         await _discordShardedClient.StartAsync();
         await WaitForReadyAsync(stoppingToken);
 
+        if (stoppingToken.IsCancellationRequested || _taskCompletionSource.Task.Result is false)
+            return;
+
         // load text commands
         await _commandService.AddModulesAsync(Assembly.GetEntryAssembly(), _serviceProvider);
         // load interactions
@@ -48,8 +52,6 @@ public class DiscordStartupService : BackgroundService
         
         // register your commands here
         //await _interactionService.RegisterCommandsToGuildAsync();
-        
-        
     }
     
     private async Task OnDiscordInteractionCreated(SocketInteraction socketInteraction)
@@ -101,7 +103,7 @@ public class DiscordStartupService : BackgroundService
             return _taskCompletionSource.Task;
 
         var registration = cancellationToken.Register(
-            state => { ((TaskCompletionSource<object>)state!).TrySetResult(null!); },
+            state => { ((TaskCompletionSource<bool>)state!).TrySetResult(false!); },
             _taskCompletionSource);
 
         return _taskCompletionSource.Task.ContinueWith(_ => registration.DisposeAsync(), cancellationToken);
